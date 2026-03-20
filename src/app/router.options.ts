@@ -89,15 +89,13 @@ export default <RouterOptions>{
                         path: '/admin',
                         name: 'admin',
                         component: (): Promise<any> => import('~/page/admin/Admin.vue'),
-                        beforeEnter(to, from, next) {
+                        beforeEnter(to) {
                             if (process.client) {
                                 const loggedIn = localStorage.getItem('user-token')
                                 if (!loggedIn) {
-                                    next('/login')
+                                    return '/login'
                                 }
                             }
-
-                            next()
                         },
                         children: [
                             {

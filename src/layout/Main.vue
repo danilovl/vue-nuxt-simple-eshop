@@ -19,7 +19,7 @@ import FooterSection from '@/components/FooterSection.vue'
 import HeaderSection from '@/components/HeaderSection.vue'
 import Alert from '@/components/Alert.vue'
 import Loader from '@/components/Loader.vue'
-import {useHead} from "@unhead/vue";
+import {useHead} from "#imports";
 import {useRoute} from "vue-router";
 
 if (!process.client) {
