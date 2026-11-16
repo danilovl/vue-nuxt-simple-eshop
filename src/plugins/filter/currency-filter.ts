@@ -1,3 +1,5 @@
-export default function currencyFilter(value: any): string {
-    return new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'}).format(value)
+const formatter = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'})
+
+export default function currencyFilter(value: number | string | null | undefined): string {
+    return formatter.format(Number(value) || 0)
 }

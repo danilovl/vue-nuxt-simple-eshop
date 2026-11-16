@@ -1,64 +1,62 @@
-import {reactive} from 'vue'
+import {ref} from 'vue'
 import {defineStore} from 'pinia'
 import Axios from 'axios'
-import type {AxiosResponse} from 'axios'
-import type {ProductState} from '@/store/type/product'
 import {ProductModel} from '@/model/product-model'
 import {AlertModel} from '@/model/alert-model'
 import AlertConstant from '@/constant/alert-constant'
-import ApiConstant from '@/constant/api-constant'
+import {useApiUrls} from '@/constant/api-constant'
 import {useLoaderStore} from '@/store/module/loader'
 import {useAlertStore} from '@/store/module/alert'
+import {useCartStore} from '@/store/module/cart'
+import {useFavoriteStore} from '@/store/module/favorite'
+import {errorMessage} from '@/utils/error-message'
 
 export const useProductStore = defineStore('product', () => {
+    const api = useApiUrls()
     const loaderStore = useLoaderStore()
     const alertStore = useAlertStore()
+    const cartStore = useCartStore()
+    const favoriteStore = useFavoriteStore()
 
-    const state = reactive<ProductState>({
-        product: null
-    }) as ProductState
+    const product = ref<ProductModel | null>(null)
 
     const getProduct = (): ProductModel | null => {
-        return state.product
+        return product.value
     }
 
-    const setProduct = (product: ProductModel): void => {
-        state.product = product
+    const setProduct = (value: ProductModel | null): void => {
+        product.value = value
     }
 
-    const initializeProduct = async (productId: number): Promise<any> => {
-        try {
-            loaderStore.setLoading(true)
-
-            const url = `${ApiConstant.PRODUCTS_URL}/${productId}`
-            const response = await Axios.get(url)
-                .then((response: AxiosResponse): AxiosResponse => {
-                    loaderStore.setLoading(false)
-
-                    return response
-                })
-
-            const product = new ProductModel(
-                response.data.id,
-                response.data.title,
-                response.data.description,
-                response.data.price,
-                response.data.rating,
-                response.data.ratingCount,
-                response.data.image
-            )
-
-            setProduct(product)
-        } catch (error: any) {
-            const alert: AlertModel = new AlertModel(AlertConstant.ERROR, error.message)
-
-            alertStore.addAlert(alert)
+    /** Loads the product detail. Skips the request when the product is already loaded (e.g. by SSR). */
+    const initializeProduct = async (productId: number): Promise<void> => {
+        if (product.value?.id === productId) {
+            return
         }
 
-        loaderStore.setLoading(false)
+        // Never show a previously opened product while (or if) the new one fails to load.
+        setProduct(null)
+
+        if (!Number.isInteger(productId) || productId < 1) {
+            return
+        }
+
+        try {
+            const response = await loaderStore.track(() => Axios.get(`${api.PRODUCTS_URL}/${productId}`))
+            const loaded = ProductModel.fromApi(response.data)
+
+            setProduct(loaded)
+
+            // keep snapshots stored in the cart / favorites in sync with the current data
+            cartStore.updateProductData(loaded)
+            favoriteStore.updateProductData(loaded)
+        } catch (error: unknown) {
+            alertStore.addAlert(new AlertModel(AlertConstant.ERROR, errorMessage(error)))
+        }
     }
 
     return {
+        product,
         getProduct,
         setProduct,
         initializeProduct

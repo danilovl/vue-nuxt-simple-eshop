@@ -1,82 +1,70 @@
-import {reactive} from 'vue'
+import {ref} from 'vue'
 import {defineStore} from 'pinia'
 import Axios from 'axios'
-import type {AxiosResponse} from 'axios'
 import type {OrderModel} from '@/model/order-model'
-import type {OrderState} from '@/store/type/order'
 import {AlertModel} from '@/model/alert-model'
 import AlertConstant from '@/constant/alert-constant'
-import ApiConstant from '@/constant/api-constant'
+import {useApiUrls} from '@/constant/api-constant'
 import {useAuthStore} from '@/store/module/auth'
 import {useLoaderStore} from '@/store/module/loader'
 import {useAlertStore} from '@/store/module/alert'
-import {useCartStore} from '@/store/module/cart'
+import {errorMessage} from '@/utils/error-message'
 
 export const useOrderStore = defineStore('order', () => {
+    const api = useApiUrls()
     const authStore = useAuthStore()
     const loaderStore = useLoaderStore()
     const alertStore = useAlertStore()
-    const cartStore = useCartStore()
 
-    const state = reactive<OrderState>({
-        orders: []
-    }) as OrderState
+    const orders = ref<OrderModel[]>([])
 
-    function setOrders(data: any): void {
-        state.orders = data
-    }
-
-    const changeOrderProcessed = (order: OrderModel): void => {
-        order.processed = order.processed === null || !order.processed
-    }
-
-    const loadOrders = async (): Promise<any> => {
-        loaderStore.setLoading(true)
-
-        const data: any = await authStore.authenticatedAxios()
-            .get(ApiConstant.ORDERS_URL)
-            .then((response: AxiosResponse): AxiosResponse => {
-                loaderStore.setLoading(false)
-
-                return response.data
-            })
-
-        setOrders(data)
-    }
     const getOrders = (): OrderModel[] => {
-        return state.orders
+        return orders.value
     }
 
-    const updateOrder = async (order: OrderModel): Promise<any> => {
-        changeOrderProcessed(order)
-
-        await authStore.authenticatedAxios().put(`${ApiConstant.ORDERS_URL}/${order.id}`, order)
-    }
-
-    const storeOrder = async (order: OrderModel): Promise<any> => {
+    const loadOrders = async (): Promise<void> => {
         try {
-            loaderStore.setLoading(true)
+            const response = await loaderStore.track(() => authStore.authenticatedAxios().get(api.ORDERS_URL))
+            orders.value = Array.isArray(response.data) ? response.data : []
+        } catch (error: unknown) {
+            alertStore.addAlert(new AlertModel(AlertConstant.ERROR, errorMessage(error)))
+        }
+    }
 
-            order.basket = cartStore.getLines()
+    /** Toggles the processed flag; the local state changes only after the server confirms it. */
+    const toggleOrderProcessed = async (order: OrderModel): Promise<void> => {
+        const updated: OrderModel = {...order, processed: !order.processed}
 
-            const response = await Axios.post(ApiConstant.ORDERS_URL, order)
-                .then((response: AxiosResponse): AxiosResponse => {
-                    loaderStore.setLoading(false)
+        try {
+            await loaderStore.track(() => authStore.authenticatedAxios().put(`${api.ORDERS_URL}/${order.id}`, updated))
+            order.processed = updated.processed
+        } catch (error: unknown) {
+            alertStore.addAlert(new AlertModel(AlertConstant.ERROR, errorMessage(error)))
+        }
+    }
 
-                    return response
-                })
+    /** @returns id of the created order, or null when the order could not be stored */
+    const storeOrder = async (order: OrderModel): Promise<number | null> => {
+        if (order.basket.length === 0) {
+            return null
+        }
 
-            return response.data.id
-        } catch (error: any) {
-            alertStore.addAlert(new AlertModel(AlertConstant.ERROR, error.message))
+        try {
+            const response = await loaderStore.track(() => Axios.post(api.ORDERS_URL, order))
+
+            return response.data?.id ?? null
+        } catch (error: unknown) {
+            alertStore.addAlert(new AlertModel(AlertConstant.ERROR, errorMessage(error)))
+
+            return null
         }
     }
 
     return {
+        orders,
         getOrders,
         loadOrders,
-        updateOrder,
-        storeOrder,
-        changeOrderProcessed
+        toggleOrderProcessed,
+        storeOrder
     }
 })

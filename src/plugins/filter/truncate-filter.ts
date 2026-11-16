@@ -1,7 +1,5 @@
-export default function truncateFilter(value: string, limit = 150): string {
-    if (value.length > limit) {
-        value = value.substring(0, (limit - 3)) + '...'
-    }
+export default function truncateFilter(value: string | null | undefined, limit = 150): string {
+    const text = value ?? ''
 
-    return value
+    return text.length > limit ? `${text.substring(0, limit - 3)}...` : text
 }

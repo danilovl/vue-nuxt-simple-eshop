@@ -10,7 +10,7 @@ export default [
 
   {
     name: 'app/files-to-ignore',
-    ignores: ['**/.nuxt/**', '**/dist/**', '**/dist-ssr/**', '**/coverage/**'],
+    ignores: ['**/.nuxt/**', '**/dist/**', '**/dist-ssr/**', '**/coverage/**', '**/.output/**', '**/node_modules/**'],
   },
 
   ...pluginVue.configs['flat/essential'],
@@ -24,16 +24,6 @@ export default [
       '@typescript-eslint/no-require-imports': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-empty-object-type': 'off',
-    },
-  },
-
-  {
-    files: ['cypress/e2e/**.{cy,spec}.{js,ts,jsx,tsx}'],
-    plugins: {
-      cypress: (await import('eslint-plugin-cypress')).default,
-    },
-    rules: {
-      ...(await import('eslint-plugin-cypress')).default.configs.recommended.rules,
     },
   },
 ]

@@ -1,27 +1,33 @@
-import {reactive} from 'vue'
+import {ref} from 'vue'
 import {defineStore} from 'pinia'
 import type {AlertModel} from '@/model/alert-model'
-import type {AlertState} from '@/store/type/alert'
+
+const ALERT_LIFETIME_MS = 3000
 
 export const useAlertStore = defineStore('alert', () => {
-    const state = reactive<AlertState>({
-        alerts: []
-    }) as AlertState
+    const alerts = ref<AlertModel[]>([])
 
-    const getAlertsOnce = (): AlertModel[] => {
-        setTimeout((): void => {
-            state.alerts = []
-        }, 3000)
+    const getAlerts = (): AlertModel[] => {
+        return alerts.value
+    }
 
-        return state.alerts
+    const removeAlertById = (id: number): void => {
+        alerts.value = alerts.value.filter((item: AlertModel): boolean => item.id !== id)
     }
 
     const addAlert = (alert: AlertModel): void => {
-        state.alerts.push(alert)
+        // plain copy: the state may be serialized into the SSR payload
+        alerts.value.push({id: alert.id, type: alert.type, text: alert.text})
+
+        if (import.meta.client) {
+            setTimeout((): void => removeAlertById(alert.id), ALERT_LIFETIME_MS)
+        }
     }
 
     return {
-        getAlertsOnce,
-        addAlert
+        alerts,
+        getAlerts,
+        addAlert,
+        removeAlertById
     }
 })

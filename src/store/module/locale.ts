@@ -1,63 +1,45 @@
-import {computed, reactive, watch} from 'vue'
+import {computed} from 'vue'
 import {defineStore} from 'pinia'
-import type {LocaleState} from '@/store/type/locale'
+import {useCookie} from '#imports'
+import LocaleConstant from '@/constant/locale-constant'
+
+const LOCALES: Record<string, string> = {
+    [LocaleConstant.EN]: 'English',
+    [LocaleConstant.RU]: 'Russian'
+}
+
+const isSupportedLocale = (locale: unknown): locale is string => {
+    return typeof locale === 'string' && Object.prototype.hasOwnProperty.call(LOCALES, locale)
+}
 
 export const useLocaleStore = defineStore('locale', () => {
-    const state = reactive<LocaleState>({
-        locale: 'en',
-        locales: {
-            en: 'English',
-            ru: 'Russian'
-        }
-    }) as LocaleState
+    // A cookie (unlike localStorage) is available during SSR, so server and client render the same language.
+    const locale = useCookie<string>('locale', {
+        default: (): string => LocaleConstant.EN,
+        maxAge: 60 * 60 * 24 * 365,
+        sameSite: 'lax'
+    })
 
-    const getLocale = computed((): string => state.locale)
-    const getLocaleLabel = computed((): string => state.locales[state.locale])
-    const getLocales = computed((): object => state.locales)
-    const getLocalesSelect = computed((): object[] => {
-        const locales = state.locales
+    if (!isSupportedLocale(locale.value)) {
+        locale.value = LocaleConstant.EN
+    }
 
-        return Object.keys(locales).map(key => ({
-            text: locales[key],
+    const getLocale = computed((): string => locale.value)
+    const getLocalesSelect = computed((): { text: string, value: string }[] => {
+        return Object.keys(LOCALES).map((key: string) => ({
+            text: LOCALES[key],
             value: key
         }))
     })
 
-    const setLocale = (locale: string): void => {
-        state.locale = locale
-    }
-
-    function loadLocale(): void {
-        if (!localStorage) {
-            return
-        }
-
-        const locale = localStorage.getItem('locale')
-        if (locale !== null) {
-            setLocale(locale)
-        }
-    }
-
-    function storeLocale(): void {
-        localStorage.setItem('locale', state.locale)
-    }
-
-    const initializeLocale = (): void => {
-        loadLocale()
-
-        watch(
-            (): string => state.locale,
-            (): void => storeLocale(),
-            {deep: true}
-        )
+    const setLocale = (value: string): void => {
+        locale.value = isSupportedLocale(value) ? value : LocaleConstant.EN
     }
 
     return {
+        locale,
         getLocale,
-        getLocaleLabel,
-        getLocales,
         getLocalesSelect,
-        setLocale,
-        initializeLocale
+        setLocale
     }
 })

@@ -1,11 +1,10 @@
 <template>
-    <div v-if="productsStore.pageCount() > 0" class="text-center">
+    <div v-if="productsStore.pageCount() > 1" class="d-flex justify-content-center mt-5">
         <vue-awesome-paginate
-            :total-items="productsStore.getState().totalCount"
-            :items-per-page="productsStore.getState().pageSize"
-            :max-pages-shown="productsStore.getState().totalVisible"
             v-model="page"
-            :on-click="onClickHandler"
+            :total-items="productsStore.totalCount"
+            :items-per-page="productsStore.pageSize"
+            :max-pages-shown="5"
         />
     </div>
 </template>
@@ -17,46 +16,10 @@ import {useProductsStore} from '@/store/module/products'
 const productsStore = useProductsStore()
 
 const page = computed({
-    get(): number {
-        return productsStore.getCurrentPage()
-    },
-    set(page: number): void {
-        productsStore.setCurrentPage(page)
+    get: (): number => productsStore.getCurrentPage(),
+    set: (value: number): void => {
+        void productsStore.setCurrentPage(value)
+        window.scrollTo({top: 0, behavior: 'smooth'})
     }
 })
-
-const onClickHandler = (pageNumber: number): void => {
-    page.value = pageNumber;
-};
 </script>
-
-<style>
-.pagination-container {
-    display: flex;
-    column-gap: 10px;
-}
-
-.paginate-buttons {
-    height: 40px;
-    width: 40px;
-    border-radius: 20px;
-    cursor: pointer;
-    background-color: rgb(242, 242, 242);
-    border: 1px solid rgb(217, 217, 217);
-    color: black;
-}
-
-.paginate-buttons:hover {
-    background-color: #d8d8d8;
-}
-
-.active-page {
-    background-color: #3498db;
-    border: 1px solid #3498db;
-    color: white;
-}
-
-.active-page:hover {
-    background-color: #2988c8;
-}
-</style>

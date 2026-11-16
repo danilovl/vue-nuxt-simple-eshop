@@ -1,23 +1,29 @@
-import {computed, reactive} from 'vue'
+import {computed, ref} from 'vue'
 import {defineStore} from 'pinia'
-import type {LoaderState} from '@/store/type/loader'
 
 export const useLoaderStore = defineStore('loader', () => {
-    const state = reactive<LoaderState>({
-        loading: false,
-        absolute: false
-    }) as LoaderState
+    // Counter instead of a flag so that parallel requests don't hide the loader too early.
+    const pending = ref<number>(0)
 
-    const isLoading = computed((): boolean => state.loading)
-    const isAbsolute = computed((): boolean => state.absolute)
+    const isLoading = computed((): boolean => pending.value > 0)
 
     const setLoading = (loading: boolean): void => {
-        state.loading = loading
+        pending.value = Math.max(0, pending.value + (loading ? 1 : -1))
+    }
+
+    const track = async <T>(action: () => Promise<T>): Promise<T> => {
+        setLoading(true)
+        try {
+            return await action()
+        } finally {
+            setLoading(false)
+        }
     }
 
     return {
+        pending,
         isLoading,
-        isAbsolute,
-        setLoading
+        setLoading,
+        track
     }
 })

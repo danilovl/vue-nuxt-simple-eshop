@@ -1,3 +1,9 @@
-export default defineNuxtPlugin(nuxtApp => {
-    nuxtApp.vueApp.config.globalProperties.$version = (): void => console.log(`Demo application version '1.0.0'`)
+const APP_VERSION = '1.0.0'
+
+export default defineNuxtPlugin(() => {
+    return {
+        provide: {
+            version: (): void => console.log(`Demo application version '${APP_VERSION}'`)
+        }
+    }
 })

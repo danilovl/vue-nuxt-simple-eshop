@@ -3,22 +3,20 @@ import ruJson from '@/locale/ru.json'
 import LocaleConstant from '@/constant/locale-constant'
 import {useLocaleStore} from '@/store/module/locale'
 
-type Locale = {
-    [key: string]: string;
+type Locale = Record<string, string>
+
+const locales: Record<string, Locale> = {
+    [LocaleConstant.EN]: enJson,
+    [LocaleConstant.RU]: ruJson
 }
 
-type Locales = {
-    [key: string]: Locale;
-}
+/**
+ * @param key translation key
+ * @param locale explicit locale; when omitted the current locale from the store is used
+ */
+export default function transFilter(key: string, locale?: string): string {
+    const chooseLocale = locale ?? useLocaleStore().getLocale
+    const messages = locales[chooseLocale] ?? locales[LocaleConstant.EN]
 
-const locales: Locales = {
-    en: enJson,
-    ru: ruJson
-}
-
-export default function transFilter(key: string, locale: string = LocaleConstant.EN): string {
-    const localeStore = useLocaleStore()
-    const chooseLocale = localeStore.getLocale || locale
-
-    return locales[chooseLocale][key] || `[Trans error]: key ${key} not found`
+    return messages[key] ?? locales[LocaleConstant.EN][key] ?? `[Trans error]: key ${key} not found`
 }
